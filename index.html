@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login con Facebook</title>
+    <!-- SDK di Facebook -->
+    <script async defer crossorigin="anonymous" 
+    src="https://connect.facebook.net/en_US/sdk.js"></script>
+    </head>
+<body>
+    <div id="fb-root"></div>
+    <script async defer crossorigin="anonymous" src="https://connect.facebook.net/it_IT/sdk.js#xfbml=1&version=v17.0&appId=YOUR_APP_ID&autoLogAppEvents=1"></script>
+    <button id="loginBtn">Login with Facebook</button>
+    
+    <script>
+        // Inizializza l'SDK di Facebook
+        FB.init({
+            appId      : '1478333819527989', // Inserisci il tuo App ID
+            cookie     : true,
+            xfbml      : true,
+            version    : 'v17.0'
+        });
+
+        // Funzione per il login
+        document.getElementById('loginBtn').onclick = function() {
+            FB.login(function(response) {
+                if (response.authResponse) {
+                    console.log('Successfully logged in', response);
+                    getAccessToken(response.authResponse.accessToken);
+                } else {
+                    console.log('User cancelled login or did not fully authorize.');
+                }
+            }, {scope: 'public_profile,pages_show_list'});
+        };
+
+        // Funzione per ottenere l'ID della pagina e il token
+        function getAccessToken(accessToken) {
+            FB.api('/me', {fields: 'id,name'}, function(response) {
+                console.log('User Info:', response); // ID e nome dell'utente
+            });
+
+            FB.api('/me/accounts', function(response) {
+                if (response && response.data) {
+                    response.data.forEach(page => {
+                        console.log('Page Name:', page.name);
+                        console.log('Page ID:', page.id); // Page ID
+                    });
+                }
+            });
+        }
+    </script>
+</body>
+</html>
