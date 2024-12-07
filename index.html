@@ -2,52 +2,214 @@
 <html lang="it">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login con Facebook</title>
-    <!-- SDK di Facebook -->
-    <script async defer crossorigin="anonymous" 
-    src="https://connect.facebook.net/en_US/sdk.js"></script>
-    </head>
+    <title>Automatic Publisher</title>
+    <style>
+        /* Stili di base per migliorare l'aspetto */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        #pages {
+            margin-top: 20px;
+        }
+        .page-item {
+            margin-bottom: 15px;
+        }
+        .page-item label {
+            font-weight: bold;
+        }
+        .page-item input[type="text"] {
+            margin-top: 5px;
+            padding: 5px;
+            width: 300px;
+        }
+        #message, #imageUrl {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+        #publishButton {
+            padding: 10px 20px;
+            font-size: 16px;
+        }
+    </style>
+</head>
 <body>
-    <div id="fb-root"></div>
-    <script async defer crossorigin="anonymous" src="https://connect.facebook.net/it_IT/sdk.js#xfbml=1&version=v17.0&appId=YOUR_APP_ID&autoLogAppEvents=1"></script>
-    <button id="loginBtn">Login with Facebook</button>
-    
-    <script>
-        // Inizializza l'SDK di Facebook
-        FB.init({
-            appId      : '1478333819527989', // Inserisci il tuo App ID
-            cookie     : true,
-            xfbml      : true,
-            version    : 'v17.0'
-        });
+    <h1>Automatic Publisher</h1>
 
-        // Funzione per il login
-        document.getElementById('loginBtn').onclick = function() {
-            FB.login(function(response) {
-                if (response.authResponse) {
-                    console.log('Successfully logged in', response);
-                    getAccessToken(response.authResponse.accessToken);
-                } else {
-                    console.log('User cancelled login or did not fully authorize.');
-                }
-            }, {scope: 'public_profile,pages_show_list'});
+    <!-- Pulsante per il login con Facebook -->
+    <button onclick="facebookLogin()">Login con Facebook</button>
+
+    <!-- Div per mostrare il messaggio di benvenuto -->
+    <div id="welcomeMessage"></div>
+
+    <!-- Campi per inserire il messaggio e l'URL dell'immagine -->
+    <div id="postContent" style="display:none;">
+        <h2>Contenuto del Post</h2>
+        <textarea id="message" rows="4" placeholder="Inserisci il messaggio da pubblicare"></textarea>
+        <input type="text" id="imageUrl" placeholder="Inserisci l'URL dell'immagine da pubblicare">
+    </div>
+
+    <!-- Div per visualizzare le pagine dell'utente -->
+    <div id="pages"></div>
+
+    <!-- SDK di Facebook -->
+    <div id="fb-root"></div>
+    <script>
+        // Inizializzazione dell'SDK di Facebook
+        window.fbAsyncInit = function() {
+            FB.init({
+                appId      : '2050475908800227', // Sostituisci con il tuo App ID
+                cookie     : true,
+                xfbml      : true,
+                version    : 'v17.0'
+            });
+
+            FB.AppEvents.logPageView();   
         };
 
-        // Funzione per ottenere l'ID della pagina e il token
-        function getAccessToken(accessToken) {
-            FB.api('/me', {fields: 'id,name'}, function(response) {
-                console.log('User Info:', response); // ID e nome dell'utente
-            });
+        // Caricamento asincrono dell'SDK
+        (function(d, s, id){
+            var js, fjs = d.getElementsByTagName(s)[0];
+            if (d.getElementById(id)) {return;}
+            js = d.createElement(s); js.id = id;
+            js.src = "https://connect.facebook.net/it_IT/sdk.js";
+            fjs.parentNode.insertBefore(js, fjs);
+        }(document, 'script', 'facebook-jssdk'));
 
-            FB.api('/me/accounts', function(response) {
-                if (response && response.data) {
-                    response.data.forEach(page => {
-                        console.log('Page Name:', page.name);
-                        console.log('Page ID:', page.id); // Page ID
+        // Funzione per il login con Facebook
+        function facebookLogin() {
+            FB.login(function(response) {
+                if (response.authResponse) {
+                    console.log('Benvenuto! Recupero le tue informazioni.... ');
+                    // Nascondi il pulsante di login
+                    document.querySelector('button').style.display = 'none';
+                    // Mostra messaggio di benvenuto
+                    FB.api('/me', function(response) {
+                        document.getElementById('welcomeMessage').innerHTML =
+                            'Ciao, ' + response.name + '! Seleziona le pagine su cui vuoi pubblicare.';
                     });
+                    // Chiamata alla funzione dopo il login
+                    afterLogin();
+                } else {
+                    console.log('Login cancellato dall\'utente o non autorizzato.');
+                }
+            }, {scope: 'public_profile,email,pages_show_list,pages_read_engagement,pages_manage_posts'});
+        }
+
+        // Funzione chiamata dopo il login per recuperare le pagine
+        function afterLogin() {
+            FB.api('/me/accounts', function(response) {
+                if (response && !response.error) {
+                    console.log('Pagine gestite:', response.data);
+                    // Mostra le pagine all'utente per selezionarle
+                    displayPages(response.data);
+                    // Mostra il contenuto del post
+                    document.getElementById('postContent').style.display = 'block';
+                } else {
+                    console.error('Errore nel recupero delle pagine:', response.error);
                 }
             });
+        }
+
+        // Funzione per visualizzare le pagine e permettere la selezione
+        function displayPages(pages) {
+            var pagesContainer = document.getElementById('pages');
+            pagesContainer.innerHTML = '<h2>Seleziona le Pagine</h2>';
+
+            pages.forEach(function(page) {
+                var pageItem = document.createElement('div');
+                pageItem.className = 'page-item';
+
+                var checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.id = page.id;
+                checkbox.name = 'pages';
+                checkbox.value = page.access_token;
+
+                var label = document.createElement('label');
+                label.htmlFor = page.id;
+                label.appendChild(document.createTextNode(' ' + page.name));
+
+                var utmInput = document.createElement('input');
+                utmInput.type = 'text';
+                utmInput.placeholder = 'Inserisci UTM per questa pagina';
+                utmInput.id = 'utm_' + page.id;
+
+                pageItem.appendChild(checkbox);
+                pageItem.appendChild(label);
+                pageItem.appendChild(document.createElement('br'));
+                pageItem.appendChild(utmInput);
+
+                pagesContainer.appendChild(pageItem);
+            });
+
+            // Aggiungi un pulsante per pubblicare
+            var publishButton = document.createElement('button');
+            publishButton.id = 'publishButton';
+            publishButton.innerText = 'Pubblica su Pagine Selezionate';
+            publishButton.onclick = publishToPages;
+            pagesContainer.appendChild(publishButton);
+        }
+
+        // Funzione per pubblicare su tutte le pagine selezionate
+        function publishToPages() {
+            var selectedPages = document.getElementsByName('pages');
+            var message = document.getElementById('message').value;
+            var imageUrl = document.getElementById('imageUrl').value;
+
+            if (!message || !imageUrl) {
+                alert('Per favore, inserisci sia il messaggio che l\'URL dell\'immagine.');
+                return;
+            }
+
+            selectedPages.forEach(function(page) {
+                if (page.checked) {
+                    var pageAccessToken = page.value;
+                    var pageId = page.id;
+                    var utmParameter = document.getElementById('utm_' + pageId).value || '';
+
+                    // Pubblica il post con immagine e testo
+                    FB.api(
+                        '/' + pageId + '/photos',
+                        'POST',
+                        {
+                            url: imageUrl,
+                            caption: message,
+                            access_token: pageAccessToken
+                        },
+                        function(response) {
+                            if (response && !response.error) {
+                                console.log('Post pubblicato su pagina ID: ' + pageId);
+
+                                // Aggiungi il primo commento con il link e l'UTM
+                                var link = 'https://tuo-link.com/?utm_source=' + encodeURIComponent(utmParameter);
+
+                                FB.api(
+                                    '/' + response.post_id + '/comments',
+                                    'POST',
+                                    {
+                                        message: link,
+                                        access_token: pageAccessToken
+                                    },
+                                    function(commentResponse) {
+                                        if (commentResponse && !commentResponse.error) {
+                                            console.log('Commento aggiunto al post ID: ' + response.post_id);
+                                        } else {
+                                            console.error('Errore nell\'aggiunta del commento:', commentResponse.error);
+                                        }
+                                    }
+                                );
+
+                            } else {
+                                console.error('Errore nella pubblicazione del post:', response.error);
+                            }
+                        }
+                    );
+                }
+            });
+
+            alert('Pubblicazione completata sulle pagine selezionate.');
         }
     </script>
 </body>
