@@ -2,6 +2,7 @@
 <html lang="it">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Automatic Publisher</title>
     <style>
         /* Stili di base per migliorare l'aspetto */
@@ -42,6 +43,15 @@
 
     <!-- Div per mostrare il messaggio di benvenuto -->
     <div id="welcomeMessage"></div>
+
+    <!-- Div per visualizzare le informazioni del profilo -->
+    <div id="profileInfo" style="display:none;">
+        <h2>Informazioni del Profilo</h2>
+        <img id="profilePic" src="" alt="Foto del Profilo">
+        <p id="profileName"></p>
+        <p id="profileEmail"></p>
+    </div>
+    
 
     <!-- Campi per inserire il messaggio e l'URL dell'immagine -->
     <div id="postContent" style="display:none;">
@@ -84,17 +94,22 @@
                     console.log('Benvenuto! Recupero le tue informazioni.... ');
                     // Nascondi il pulsante di login
                     document.querySelector('button').style.display = 'none';
-                    // Mostra messaggio di benvenuto
-                    FB.api('/me', function(response) {
-                        document.getElementById('welcomeMessage').innerHTML =
-                            'Ciao, ' + response.name + '! Seleziona le pagine su cui vuoi pubblicare.';
+
+                    // Ottieni le informazioni del profilo
+                    FB.api('/me', {fields: 'id,name,email,picture'}, function(response) {
+                        console.log('Informazioni del profilo: ', response);
+                        document.getElementById('profileInfo').style.display = 'block';
+                        document.getElementById('profilePic').src = response.picture.data.url;
+                        document.getElementById('profileName').innerText = 'Nome: ' + response.name;
+                        document.getElementById('profileEmail').innerText = 'Email: ' + response.email;
                     });
-                    // Chiamata alla funzione dopo il login
-                    afterLogin();
+
+                    // Mostra il contenuto del post
+                    document.getElementById('postContent').style.display = 'block';
                 } else {
-                    console.log('Login cancellato dall\'utente o non autorizzato.');
+                    console.log('Login non riuscito.');
                 }
-            }, {scope: 'public_profile,email'}); //,pages_show_list,pages_read_engagement,pages_manage_posts
+            }, {scope: 'public_profile,email,user_photos,user_videos,user_posts'});
         }
 
         // Funzione chiamata dopo il login per recuperare le pagine
