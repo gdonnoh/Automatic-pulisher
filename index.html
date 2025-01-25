@@ -39,6 +39,8 @@
             border-radius: 50%;
         }
     </style>
+    <!-- Includi la libreria CryptoJS -->
+    <script src="https://crypto-js.googlecode.com/svn/tags/3.1.9-1/build/rollups/hmac-sha256.js"></script>
 </head>
 <body>
     <h1>Automatic Publisher</h1>
@@ -91,6 +93,12 @@
             fjs.parentNode.insertBefore(js, fjs);
         }(document, 'script', 'facebook-jssdk'));
 
+        // Funzione per calcolare appsecret_proof usando HMAC-SHA256
+        function getAppSecretProof(accessToken, appSecret) {
+            var hash = CryptoJS.HmacSHA256(accessToken, appSecret);
+            return hash.toString(CryptoJS.enc.Hex);
+        }
+
         // Funzione per il login con Facebook
         function facebookLogin() {
             FB.login(function(response) {
@@ -121,7 +129,12 @@
 
         // Funzione chiamata dopo il login per recuperare le pagine
         function afterLogin() {
-            FB.api('/me/accounts', function(response) {
+            var appSecret = '21fb22b44220ca5df335f8c1b3b4baf8'; // Sostituisci con il tuo App Secret
+
+            FB.api('/me/accounts', { 
+                access_token: FB.getAuthResponse().accessToken,
+                appsecret_proof: getAppSecretProof(FB.getAuthResponse().accessToken, appSecret)
+            }, function(response) {
                 if (response && !response.error) {
                     console.log('Pagine gestite:', response.data);
                     // Mostra le pagine all'utente per selezionarle
@@ -226,9 +239,9 @@
             alert('Pubblicazione completata sulle pagine selezionate.');
         }
     </script>
-    <footer>
-        <p>&copy; 2023 The Social Traffic. Tutti i diritti riservati.</p>
-        <p><a href="https://gdonnoh.github.io/Informativa-sulla-privacy/">Informativa sulla Privacy</a></p>
-    </footer>
+        <footer>
+            <p>&copy; 2023 The Social Traffic. Tutti i diritti riservati.</p>
+            <p><a href="https://gdonnoh.github.io/Informativa-sulla-privacy/">Informativa sulla Privacy</a></p>
+        </footer>
 </body>
 </html>
