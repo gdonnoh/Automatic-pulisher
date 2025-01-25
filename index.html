@@ -33,6 +33,11 @@
             padding: 10px 20px;
             font-size: 16px;
         }
+        #profilePic {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+        }
     </style>
 </head>
 <body>
@@ -51,7 +56,6 @@
         <p id="profileName"></p>
         <p id="profileEmail"></p>
     </div>
-    
 
     <!-- Campi per inserire il messaggio e l'URL dell'immagine -->
     <div id="postContent" style="display:none;">
@@ -96,7 +100,7 @@
                     document.querySelector('button').style.display = 'none';
 
                     // Ottieni le informazioni del profilo
-                    FB.api('/me', {fields: 'id,name,email,picture'}, function(response) {
+                    FB.api('/me', {fields: 'id,name,email,picture.width(200).height(200)'}, function(response) {
                         console.log('Informazioni del profilo: ', response);
                         document.getElementById('profileInfo').style.display = 'block';
                         document.getElementById('profilePic').src = response.picture.data.url;
@@ -170,61 +174,53 @@
             pagesContainer.appendChild(publishButton);
         }
 
-        // Funzione per pubblicare su tutte le pagine selezionate
+        // Funzione per pubblicare su pagine selezionate
         function publishToPages() {
-            var selectedPages = document.getElementsByName('pages');
             var message = document.getElementById('message').value;
             var imageUrl = document.getElementById('imageUrl').value;
-
-            if (!message || !imageUrl) {
-                alert('Per favore, inserisci sia il messaggio che l\'URL dell\'immagine.');
-                return;
-            }
+            var selectedPages = document.querySelectorAll('input[name="pages"]:checked');
 
             selectedPages.forEach(function(page) {
-                if (page.checked) {
-                    var pageAccessToken = page.value;
-                    var pageId = page.id;
-                    var utmParameter = document.getElementById('utm_' + pageId).value || '';
+                var pageAccessToken = page.value;
+                var pageId = page.id;
+                var utm = document.getElementById('utm_' + pageId).value;
 
-                    // Pubblica il post con immagine e testo
-                    FB.api(
-                        '/' + pageId + '/photos',
-                        'POST',
-                        {
-                            url: imageUrl,
-                            caption: message,
-                            access_token: pageAccessToken
-                        },
-                        function(response) {
-                            if (response && !response.error) {
-                                console.log('Post pubblicato su pagina ID: ' + pageId);
+                var postData = {
+                    message: message + ' ' + utm,
+                    access_token: pageAccessToken
+                };
 
-                                // Aggiungi il primo commento con il link e l'UTM
-                                var link = 'https://tuo-link.com/?utm_source=' + encodeURIComponent(utmParameter);
-
-                                FB.api(
-                                    '/' + response.post_id + '/comments',
-                                    'POST',
-                                    {
-                                        message: link,
-                                        access_token: pageAccessToken
-                                    },
-                                    function(commentResponse) {
-                                        if (commentResponse && !commentResponse.error) {
-                                            console.log('Commento aggiunto al post ID: ' + response.post_id);
-                                        } else {
-                                            console.error('Errore nell\'aggiunta del commento:', commentResponse.error);
-                                        }
-                                    }
-                                );
-
-                            } else {
-                                console.error('Errore nella pubblicazione del post:', response.error);
-                            }
-                        }
-                    );
+                if (imageUrl) {
+                    postData.url = imageUrl;
                 }
+
+                FB.api(`/${pageId}/photos`, 'POST', postData, function(response) {
+                    if (response && !response.error) {
+                        console.log('Post pubblicato con successo su ' + pageId, response);
+
+                        // Aggiungi il primo commento con il link e l'UTM
+                        var link = 'https://tuo-link.com/?utm_source=' + encodeURIComponent(utm);
+
+                        FB.api(
+                            '/' + response.post_id + '/comments',
+                            'POST',
+                            {
+                                message: link,
+                                access_token: pageAccessToken
+                            },
+                            function(commentResponse) {
+                                if (commentResponse && !commentResponse.error) {
+                                    console.log('Commento aggiunto al post ID: ' + response.post_id);
+                                } else {
+                                    console.error('Errore nell\'aggiunta del commento:', commentResponse.error);
+                                }
+                            }
+                        );
+
+                    } else {
+                        console.error('Errore nella pubblicazione del post:', response.error);
+                    }
+                });
             });
 
             alert('Pubblicazione completata sulle pagine selezionate.');
@@ -234,6 +230,5 @@
         <p>&copy; 2023 The Social Traffic. Tutti i diritti riservati.</p>
         <p><a href="https://gdonnoh.github.io/Informativa-sulla-privacy/">Informativa sulla Privacy</a></p>
     </footer>
-    
 </body>
 </html>
