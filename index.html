@@ -106,6 +106,9 @@
 
                     // Mostra il contenuto del post
                     document.getElementById('postContent').style.display = 'block';
+
+                    // Recupera le pagine gestite dall'utente
+                    afterLogin();
                 } else {
                     console.log('Login non riuscito.');
                 }
