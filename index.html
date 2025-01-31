@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Automatic Publisher</title>
     <style>
-        /* Stili di base per migliorare l'aspetto */
         body {
             font-family: Arial, sans-serif;
             margin: 20px;
@@ -39,211 +38,157 @@
             border-radius: 50%;
         }
     </style>
-    <!-- Includi la libreria CryptoJS -->
-    <script src="https://crypto-js.googlecode.com/svn/tags/3.1.9-1/build/rollups/hmac-sha256.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
-
 </head>
 <body>
     <h1>Automatic Publisher</h1>
-
-    <!-- Pulsante per il login con Facebook -->
     <button onclick="facebookLogin()">Login con Facebook</button>
 
-    <!-- Div per mostrare il messaggio di benvenuto -->
-    <div id="welcomeMessage"></div>
-
-    <!-- Div per visualizzare le informazioni del profilo -->
     <div id="profileInfo" style="display:none;">
         <h2>Informazioni del Profilo</h2>
-        <img id="profilePic" src="" alt="Foto del Profilo">
+        <img id="profilePic" src="" alt="Foto del Profilo" 
+             onerror="this.src='https://via.placeholder.com/100';this.onerror=null;">
         <p id="profileName"></p>
         <p id="profileEmail"></p>
     </div>
 
-    <!-- Campi per inserire il messaggio e l'URL dell'immagine -->
     <div id="postContent" style="display:none;">
         <h2>Contenuto del Post</h2>
-        <textarea id="message" rows="4" placeholder="Inserisci il messaggio da pubblicare"></textarea>
-        <input type="text" id="imageUrl" placeholder="Inserisci l'URL dell'immagine da pubblicare">
+        <textarea id="message" rows="4" placeholder="Inserisci il messaggio"></textarea>
+        <input type="text" id="imageUrl" placeholder="URL dell'immagine da pubblicare">
     </div>
 
-    <!-- Div per visualizzare le pagine dell'utente -->
     <div id="pages"></div>
 
-    <!-- SDK di Facebook -->
     <div id="fb-root"></div>
     <script>
-        // Inizializzazione dell'SDK di Facebook
+        // Inizializzazione SDK Facebook
         window.fbAsyncInit = function() {
             FB.init({
-                appId      : '2050475908800227', // Sostituisci con il tuo App ID
-                cookie     : true,
-                xfbml      : true,
-                version    : 'v17.0'
+                appId: '2050475908800227', // SOSTITUIRE CON APP ID REALE
+                cookie: true,
+                xfbml: true,
+                version: 'v17.0'
             });
-
-            FB.AppEvents.logPageView();   
+            FB.AppEvents.logPageView();
         };
 
-        // Caricamento asincrono dell'SDK
         (function(d, s, id){
             var js, fjs = d.getElementsByTagName(s)[0];
-            if (d.getElementById(id)) {return;}
+            if (d.getElementById(id)) return;
             js = d.createElement(s); js.id = id;
             js.src = "https://connect.facebook.net/it_IT/sdk.js";
             fjs.parentNode.insertBefore(js, fjs);
         }(document, 'script', 'facebook-jssdk'));
 
-        // Funzione per calcolare appsecret_proof usando HMAC-SHA256
-        function getAppSecretProof(accessToken, appSecret) {
-            var hash = CryptoJS.HmacSHA256(accessToken, appSecret);
-            return hash.toString(CryptoJS.enc.Hex);
-        }
-
-        // Funzione per il login con Facebook
+        // Funzione di login
         function facebookLogin() {
             FB.login(function(response) {
                 if (response.authResponse) {
-                    console.log('Benvenuto! Recupero le tue informazioni.... ');
-                    // Nascondi il pulsante di login
                     document.querySelector('button').style.display = 'none';
-
-                    // Ottieni le informazioni del profilo
-                    FB.api('/me', {fields: 'id,name,email,picture.width(200).height(200)'}, function(response) {
-                        console.log('Informazioni del profilo: ', response);
+                    
+                    // Recupera le informazioni del profilo
+                    FB.api('/me', {
+                        fields: 'id,name,email,picture.width(200).height(200)',
+                        access_token: FB.getAuthResponse().accessToken
+                    }, function(response) {
+                        console.log('Informazioni del profilo:', response);
+                        
+                        // Imposta l'immagine del profilo con access token
+                        const imgUrl = `${response.picture.data.url}?access_token=${FB.getAuthResponse().accessToken}`;
+                        document.getElementById('profilePic').src = imgUrl;
+                        
+                        document.getElementById('profileName').textContent = 'Nome: ' + response.name;
+                        document.getElementById('profileEmail').textContent = 'Email: ' + response.email;
                         document.getElementById('profileInfo').style.display = 'block';
-                        document.getElementById('profilePic').src = response.picture.data.url;
-                        document.getElementById('profileName').innerText = 'Nome: ' + response.name;
-                        document.getElementById('profileEmail').innerText = 'Email: ' + response.email;
                     });
 
                     // Mostra il contenuto del post
                     document.getElementById('postContent').style.display = 'block';
-
-                    // Recupera le pagine gestite dall'utente
+                    
+                    // Recupera le pagine gestite
                     afterLogin();
                 } else {
                     console.log('Login non riuscito.');
                 }
-            }, {scope: 'public_profile,email,user_photos,user_videos,user_posts'});
+            }, { scope: 'public_profile,email,pages_manage_posts' });
         }
 
-        // Funzione chiamata dopo il login per recuperare le pagine
+        // Funzione per gestire le pagine
         function afterLogin() {
-            var appSecret = '21fb22b44220ca5df335f8c1b3b4baf8'; // Sostituisci con il tuo App Secret
-
-            FB.api('/me/accounts', { 
+            const appSecret = '21fb22b44220ca5df335f8c1b3b4baf8'; // SOSTITUIRE CON APP SECRET REALE
+            
+            FB.api('/me/accounts', {
                 access_token: FB.getAuthResponse().accessToken,
-                appsecret_proof: getAppSecretProof(FB.getAuthResponse().accessToken, appSecret)
+                appsecret_proof: CryptoJS.HmacSHA256(
+                    FB.getAuthResponse().accessToken, 
+                    appSecret
+                ).toString(CryptoJS.enc.Hex)
             }, function(response) {
-                if (response && !response.error) {
-                    console.log('Pagine gestite:', response.data);
-                    // Mostra le pagine all'utente per selezionarle
+                if (response.data) {
                     displayPages(response.data);
-                    // Mostra il contenuto del post
-                    document.getElementById('postContent').style.display = 'block';
-                } else {
-                    console.error('Errore nel recupero delle pagine:', response.error);
                 }
             });
         }
 
-        // Funzione per visualizzare le pagine e permettere la selezione
+        // Funzione per visualizzare le pagine
         function displayPages(pages) {
-            var pagesContainer = document.getElementById('pages');
-            pagesContainer.innerHTML = '<h2>Seleziona le Pagine</h2>';
+            const container = document.getElementById('pages');
+            container.innerHTML = '<h2>Seleziona le Pagine</h2>';
 
-            pages.forEach(function(page) {
-                var pageItem = document.createElement('div');
-                pageItem.className = 'page-item';
-
-                var checkbox = document.createElement('input');
-                checkbox.type = 'checkbox';
-                checkbox.id = page.id;
-                checkbox.name = 'pages';
-                checkbox.value = page.access_token;
-
-                var label = document.createElement('label');
-                label.htmlFor = page.id;
-                label.appendChild(document.createTextNode(' ' + page.name));
-
-                var utmInput = document.createElement('input');
-                utmInput.type = 'text';
-                utmInput.placeholder = 'Inserisci UTM per questa pagina';
-                utmInput.id = 'utm_' + page.id;
-
-                pageItem.appendChild(checkbox);
-                pageItem.appendChild(label);
-                pageItem.appendChild(document.createElement('br'));
-                pageItem.appendChild(utmInput);
-
-                pagesContainer.appendChild(pageItem);
+            pages.forEach(page => {
+                const div = document.createElement('div');
+                div.className = 'page-item';
+                div.innerHTML = `
+                    <input type="checkbox" id="${page.id}" value="${page.access_token}">
+                    <label for="${page.id}">${page.name}</label>
+                    <input type="text" id="utm_${page.id}" placeholder="Parametro UTM">
+                `;
+                container.appendChild(div);
             });
 
-            // Aggiungi un pulsante per pubblicare
-            var publishButton = document.createElement('button');
-            publishButton.id = 'publishButton';
-            publishButton.innerText = 'Pubblica su Pagine Selezionate';
-            publishButton.onclick = publishToPages;
-            pagesContainer.appendChild(publishButton);
+            const publishBtn = document.createElement('button');
+            publishBtn.id = 'publishButton';
+            publishBtn.textContent = 'Pubblica su Pagine Selezionate';
+            publishBtn.onclick = publishToPages;
+            container.appendChild(publishBtn);
         }
 
-        // Funzione per pubblicare su pagine selezionate
+        // Funzione per pubblicare sui post
         function publishToPages() {
-            var message = document.getElementById('message').value;
-            var imageUrl = document.getElementById('imageUrl').value;
-            var selectedPages = document.querySelectorAll('input[name="pages"]:checked');
+            const message = document.getElementById('message').value;
+            const imageUrl = document.getElementById('imageUrl').value;
+            const selectedPages = document.querySelectorAll('input[type="checkbox"]:checked');
 
-            selectedPages.forEach(function(page) {
-                var pageAccessToken = page.value;
-                var pageId = page.id;
-                var utm = document.getElementById('utm_' + pageId).value;
+            selectedPages.forEach(page => {
+                const pageId = page.id;
+                const accessToken = page.value;
+                const utm = document.getElementById(`utm_${pageId}`).value;
 
-                var postData = {
-                    message: message + ' ' + utm,
-                    access_token: pageAccessToken
+                const postData = {
+                    message: `${message} [${utm}]`,
+                    access_token: accessToken
                 };
 
                 if (imageUrl) {
                     postData.url = imageUrl;
                 }
 
-                FB.api(`/${pageId}/photos`, 'POST', postData, function(response) {
-                    if (response && !response.error) {
-                        console.log('Post pubblicato con successo su ' + pageId, response);
-
-                        // Aggiungi il primo commento con il link e l'UTM
-                        var link = 'https://tuo-link.com/?utm_source=' + encodeURIComponent(utm);
-
-                        FB.api(
-                            '/' + response.post_id + '/comments',
-                            'POST',
-                            {
-                                message: link,
-                                access_token: pageAccessToken
-                            },
-                            function(commentResponse) {
-                                if (commentResponse && !commentResponse.error) {
-                                    console.log('Commento aggiunto al post ID: ' + response.post_id);
-                                } else {
-                                    console.error('Errore nell\'aggiunta del commento:', commentResponse.error);
-                                }
-                            }
-                        );
-
+                FB.api(`/${pageId}/feed`, 'POST', postData, function(response) {
+                    if (response.error) {
+                        console.error('Errore nella pubblicazione:', response.error);
                     } else {
-                        console.error('Errore nella pubblicazione del post:', response.error);
+                        console.log('Post pubblicato con successo:', response);
                     }
                 });
             });
 
-            alert('Pubblicazione completata sulle pagine selezionate.');
+            alert('Pubblicazione completata!');
         }
     </script>
-        <footer>
-            <p>&copy; 2023 The Social Traffic. Tutti i diritti riservati.</p>
-            <p><a href="https://gdonnoh.github.io/Informativa-sulla-privacy/">Informativa sulla Privacy</a></p>
-        </footer>
+    <footer>
+        <p>&copy; 2023 The Social Traffic. Tutti i diritti riservati.</p>
+        <p><a href="https://gdonnoh.github.io/Informativa-sulla-privacy/">Informativa sulla Privacy</a></p>
+    </footer>
 </body>
 </html>
