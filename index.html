@@ -95,9 +95,10 @@
                         console.log('Informazioni del profilo:', response);
                         
                         // Imposta l'immagine del profilo con access token
-                        const imgUrl = `${response.picture.data.url}?access_token=${FB.getAuthResponse().accessToken}`;
+                        const imgUrl = response.picture.data.url;
                         document.getElementById('profilePic').src = imgUrl;
-                        
+                        console.log("URL immagine:", response.picture.data.url);
+
                         document.getElementById('profileName').textContent = 'Nome: ' + response.name;
                         document.getElementById('profileEmail').textContent = 'Email: ' + response.email;
                         document.getElementById('profileInfo').style.display = 'block';
@@ -111,7 +112,7 @@
                 } else {
                     console.log('Login non riuscito.');
                 }
-            }, { scope: 'public_profile,email,pages_manage_posts' });
+            }, { scope: 'public_profile,email' });
         }
 
         // Funzione per gestire le pagine
